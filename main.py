@@ -55,7 +55,7 @@ def check_captcha(driver, wait):
         elif operacao[3] == '*' or operacao[3].lower() == 'x':
             resultado = op1 * op2
         elif operacao[3] == '/':
-            resultado = op1 - op2
+            resultado = op1 / op2
 
         resposta = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[inputmode='numeric']")))
         resposta.send_keys(str(resultado))
@@ -67,36 +67,6 @@ def check_captcha(driver, wait):
 
 def resultados_carregados(driver):
 
-    if driver.find_elements(By.CLASS_NAME, "notas-list"):
-        return "tipo li"
-
-    if driver.find_elements(By.CLASS_NAME, "notas-card"):
-        return "tipo card"
-
-    if driver.find_elements(
-        By.CSS_SELECTOR, "#resultados table tbody tr"
-    ):
-        return "tipo tr"
-
-    return False
-
-def pegar_informacoes(driver, wait):
-
-    print("resultados existe")
-
-    print("notas-list:",
-            len(driver.find_elements(By.CLASS_NAME, "notas-list")))
-
-    print("notas-card:",
-            len(driver.find_elements(By.CLASS_NAME, "notas-card")))
-
-    print("tr:",
-            len(driver.find_elements(
-                By.CSS_SELECTOR, "#resultados table tbody tr"
-            )))
-
-    wait.until(resultados_carregados)
-
     elementos = driver.find_elements(By.CLASS_NAME, "notas-list")
 
     if elementos:
@@ -107,12 +77,24 @@ def pegar_informacoes(driver, wait):
     if elementos:
         return elementos, "tipo card"
 
-    elementos = driver.find_elements(By.CSS_SELECTOR, "#resultados table tbody tr")
+    elementos = driver.find_elements(
+        By.CSS_SELECTOR,
+        "#resultados table tbody tr"
+    )
 
     if elementos:
         return elementos, "tipo tr"
 
+    return False
+
+def pegar_informacoes(driver, wait):
+
+    return wait.until(resultados_carregados)
+
 def main():
+    dicionario_notas = {}
+    n_autorizadas = 0
+
     driver = webdriver.Chrome()
     wait = WebDriverWait(driver, 6) #Driver espera no máximo 5 segundos
 
@@ -128,16 +110,27 @@ def main():
     while True:
         check_popup(driver, wait)
 
-        dados, tipo = pegar_informacoes(driver, wait)
+        notas, tipo = pegar_informacoes(driver, wait)
 
-        for info in dados:
+        for info in notas:
 
-            badge_autorizada = info.find_element(By.CSS_SELECTOR, ".badge.aut")
+            badge_autorizada = None
+            badge_autorizada = info.find_elements(By.CSS_SELECTOR, ".badge.aut")
 
             if badge_autorizada:
+                n_autorizadas += 1
                 print("Achou autorizada!!")
                 link = info.find_element(By.TAG_NAME, "a")
                 link.click()
+                check_popup(driver, wait)
+                dados = driver.find_elements(By.CSS_SELECTOR, "table tbody tr")
+
+                codigo = dados[0].find_element(By.CSS_SELECTOR, "td").text
+                valor = dados[5].find_element(By.CSS_SELECTOR, "td").text
+                dicionario_notas[str(n_autorizadas)] = {"código": codigo, "valor": valor}
+
+                link_voltar = driver.find_element(By.CLASS_NAME, "muted")
+                link_voltar.click()
             else:
                 continue
 
